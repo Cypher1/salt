@@ -1,135 +1,130 @@
 
 module Salt.Core.Check.Module where
-import Salt.Core.Check.Error
-import Salt.Core.Check.Where
+import Salt.Core.Check.Module.DeclType
+import Salt.Core.Check.Module.DeclTerm
+import Salt.Core.Check.Module.DeclTest
+import Salt.Core.Check.Module.DeclEmit
+import Salt.Core.Check.Module.Base
 import Salt.Core.Check.Type
 import Salt.Core.Check.Term
-import Salt.Core.Check.Context
-import Salt.Core.Exp
-import qualified Control.Exception      as Control
-import qualified Data.Map               as Map
+import Salt.Core.Check.Term.Base
+import qualified Data.Map       as Map
+import qualified Data.Either    as Either
 
 
----------------------------------------------------------------------------------------------------
 -- | Check a whole module.
+---
+--   We need to do this in stages to ensure that type synonyms are are well
+--   kinded before checking terms that may mention them etc.
+--
+--   We want to do this so we don't accidently reduce type operator
+--   applications that were actually ill-kinded. We also prefer to see errors
+--   in the term declaratoins before dealing with errors in test declarations.
+--
 checkModule
         :: Annot a
         => a -> Module a
-        -> IO (Context a, Module a, [Error a])
+        -> IO (Either [Error a] (Module a, Context a))
 
 checkModule a mm
- = do
-        -- Extract a list of signatures for top-level declarations.
-        -- TODO: kind-check these before adding them to the context.
-        let ntsDeclTerm
-                = [ (n, makeDeclTypeOfParamsResult pss tsResult)
-                  | DTerm (DeclTerm _a n pss tsResult _mBody) <- moduleDecls mm ]
-
-        -- Build the top level context.
-        let ctx = Context
-                { contextModuleTerm     = Map.fromList ntsDeclTerm
-                , contextLocal          = [] }
-
-        (ds', errss)
-         <- fmap unzip
-                $ mapM (checkHandleDecl a ctx)
-                $ moduleDecls mm
-
-        return  ( ctx
-                , mm { moduleDecls = ds' }
-                , concat errss)
-
-
--- TODO: throw proper arity errors.
-makeDeclTypeOfParamsResult :: [TermParams a] -> [Type a] -> Type a
-makeDeclTypeOfParamsResult pss0 tsResult
- = case loop pss0 of
-        [t]     -> t
-        _       -> error "arity error when making decl type"
+ = goTypeSigs ctxStart (moduleDecls mm)
  where
-        loop []                   = tsResult
-        loop (MPTerms bts : pss') = [TFun (map snd bts) (loop pss')]
+        ctxStart
+         = Context
+         { contextOptions       = optionsDefault
+         , contextCheckType     = checkTypeWith
+         , contextSynthTerm     = synthTermWith
+         , contextCheckTerm     = checkTermWith
+         , contextModuleType    = Map.empty
+         , contextModuleTerm    = Map.empty
+         , contextLocal         = []
+         , contextInside        = [] }
 
-        loop (MPTypes bts : pss')
-         = case loop pss' of
-                [t] -> [TForall bts t]
-                _   -> error "arity error when making decl type"
+        -- Check kind signatures on types, before adding them to the context.
+        goTypeSigs  ctx decls
+         = do
+                -- Check kind signatures on type decls.
+                (decls', errsSig)
+                 <- checkDecls (checkDeclTypeSig a ctx) decls
 
+                -- Check type decls not rebound and not recursive.
+                let errsRebound   = checkDeclTypeRebound   decls
+                let errsRecursive = checkDeclTypeRecursive decls
 
----------------------------------------------------------------------------------------------------
--- | Check a declaration and handle any errors that we find.
---   TODO: track a map of top level decls with type errors.
-checkHandleDecl
-        :: forall a. Annot a
-        => a -> Context a -> Decl a -> IO (Decl a, [Error a])
-checkHandleDecl a ctx decl
- = Control.try (checkDecl a ctx decl)
- >>= \case
-        Right decl'             -> return (decl', [])
-        Left (err :: Error a)   -> return (decl,  [err])
+                let errs = errsSig ++ errsRebound ++ errsRecursive
+                if not $ null errs
+                 then return $ Left errs
+                 else do
+                        let nktsDeclType
+                                = [ ( n
+                                  , ( makeKindOfDeclType pss kResult
+                                    , makeTAbsOfParams pss tBody))
+                                  | DType (DeclType _a n pss kResult tBody) <- decls' ]
+                        let ctx' = ctx { contextModuleType = Map.fromList nktsDeclType }
+                        goTypeDecls ctx' decls'
 
+        -- Check individual type declarations.
+        goTypeDecls ctx decls
+         = do   (decls', errs)
+                 <- checkDecls (checkDeclType a ctx) decls
 
--- | Check the given declaration.
-checkDecl :: Annot a => a -> Context a -> Decl a -> IO (Decl a)
+                if not $ null errs
+                 then return $ Left errs
+                 else goTermSigs  ctx decls'
 
--- (t-decl-kind) ------------------------------------------
-checkDecl _a ctx (DTest (DeclTestKind a' n t))
- = do   let wh = [WhereTestKind a' n]
-        (t', _k) <- checkType a' wh ctx t
-        return  $ DTest $ DeclTestKind a' n t'
+        -- Check type signatures on terms, before adding them to the context.
+        goTermSigs ctx decls
+         = do
+                -- Check type signatures on term decls.
+                (decls', errsSig)
+                 <- checkDecls (checkDeclTermSig a ctx) decls
 
+                -- Check term decls are not rebound,
+                --  though they are permitted to be recursive.
+                let errsRebound = checkDeclTermRebound decls
 
--- (t-decl-type) ------------------------------------------
-checkDecl _a ctx (DTest (DeclTestType a' n m))
- = do   let wh  = [WhereTestType a' n]
-        (m', _tResult, _esResult)
-         <- checkTerm a' wh ctx m Synth
-        return  $ DTest $ DeclTestType a' n m'
+                let (errsDeclTerm, ntssDeclTerm)
+                     = Either.partitionEithers $ map makeTypeOfDeclTerm decls'
 
+                let errs = errsSig ++ errsRebound ++ errsDeclTerm
+                let ntsDeclTerm = concat ntssDeclTerm
 
--- (t-decl-eval) ------------------------------------------
-checkDecl _a ctx (DTest (DeclTestEval a' n m))
- = do   let wh  = [WhereTestEval a' n]
-        (m', _tResult, _esResult)
-         <- checkTerm a' wh ctx m Synth
+                if not $ null errs
+                 then return $ Left errs
+                 else do
+                        let ctx' = ctx { contextModuleTerm = Map.fromList ntsDeclTerm }
+                        goTermDecls ctx' decls'
 
-        -- TODO: check effects are empty.
-        return  $ DTest $ DeclTestEval a' n m'
+        -- Check individual term declarations.
+        goTermDecls ctx decls
+         = do   (decls', errs)
+                 <- checkDecls (checkDeclTerm a ctx) decls
 
+                if not $ null errs
+                 then return $ Left errs
+                 else goTestSigs ctx decls'
 
--- (t-decl-exec) ------------------------------------------
-checkDecl _a ctx (DTest (DeclTestExec a' n m))
- = do   let wh  = [WhereTestExec a' n]
-        (m', _tResult, _esResult)
-         <- checkTerm a' wh ctx m Synth
+        -- Check test signatures.
+        goTestSigs ctx decls
+         = do   let errs        = checkDeclTestRebound decls
+                if not $ null errs
+                 then return $ Left errs
+                 else goTestDecls ctx decls
 
-        -- TODO: check effects are empty.
-        -- TODO: check expr returns a suspension
-        return  $ DTest $ DeclTestExec a' n m'
+        -- Check individual test declarations.
+        goTestDecls ctx decls
+         = do   (decls', errs)
+                 <- checkDecls (checkDeclTest a ctx) decls
 
+                if not $ null errs
+                 then return $ Left errs
+                 else goEmitDecls ctx decls'
 
--- (t-decl-assert) ----------------------------------------
-checkDecl _a ctx (DTest (DeclTestAssert a' n m))
- = do   let wh  = [WhereTestAssert a' n]
-        (m', _tResult, _esResult)
-         <- checkTerm a' wh ctx m (Check [TBool])
+        -- Check individual emit declarations.
+        goEmitDecls ctx decls
+         = do   (decls', errs)
+                 <- checkDecls (checkDeclEmit a ctx) decls
 
-        -- TODO: check effects are empty.
-        return  $ DTest $ DeclTestAssert a' n m'
-
-
--- (t-decl-term) ------------------------------------------
-checkDecl _a ctx (DTerm (DeclTerm a n tpss mtResult mBody))
- = do   let wh   = [WhereTermDecl a n]
-        tpss'    <- checkTermParamss a wh ctx tpss
-        let ctx' =  foldl (flip contextBindTermParams) ctx tpss'
-
-        (mBody', _tsResult, _esResult)
-         <- checkTerm a wh ctx' mBody Synth
-
-        -- TODO: result type needs to be a vector.
-        -- TODO: check against result type.
-        -- TODO: check result type.
-        -- TODO: check effects are empty.
-        return  $ DTerm $ DeclTerm a n tpss' mtResult mBody'
-
+                if not $ null errs
+                 then return $ Left errs
+                 else return $ Right (mm { moduleDecls = decls' }, ctx)

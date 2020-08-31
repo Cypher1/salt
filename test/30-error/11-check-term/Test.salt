@@ -1,0 +1,380 @@
+-- Trigger all the errors that can be produced by checkTerm.
+
+-- (t-the) --------------------------------------------------------------------
+-- Error: type does not match ascription.
+test type the #Nat of #true
+
+-- (t-run) --------------------------------------------------------------------
+-- Error: value to run is not a suspension.
+test type run #true
+
+
+-- (t-prm) --------------------------------------------------------------------
+-- Error: unknown primitive.
+test type #derp x
+
+-- Error: unsaturated primitive operator.
+test type #map'insert
+
+-- Error: unsaturated primitive constructor.
+test type #None
+
+-- Error: out of bounds literal.
+test type #word8'256
+
+-- (t-con) --------------------------------------------------------------------
+-- Error: unknown term constructor.
+test type Derp
+
+
+-- (t-var) --------------------------------------------------------------------
+-- Error: unknown term variable.
+test type x
+
+
+-- (t-abt) --------------------------------------------------------------------
+-- Error: parameter annotation from the wrong universe.
+test type (λ@[a: #Nat] → #unit)
+
+-- Error: parameter annotation is ill-formed.
+test type (λ@[a: #Data #Data] → #unit)
+
+-- Error: body must produce a value.
+test type (λ@[a: #Data] → [])
+
+-- Error: body is not pure.
+test type (λ@[a: #Data] → do { #console'print "derp"; #unit })
+
+-- Error: duplicate parameter names.
+test type (λ@[a: #Data, a: #Data] → [])
+
+
+-- (t-abm) --------------------------------------------------------------------
+-- Error: parameter type in wrong universe.
+test type (λ[x: #Data] → [])
+
+-- Error: parameter annotation is ill kinded.
+test type (λ[x: #Nat #Nat] → [])
+
+-- Error: parameter annotation does not have data kind.
+test type (λ[x: #Console] → [])
+
+-- Error: body is not pure.
+test type (λ[x: #Text] → #console'print "derp")
+
+-- Error: duplciate parameter names
+test type (λ[x: #Nat, x: #Nat] → [])
+
+
+-- (t-aps) --------------------------------------------------------------------
+-- Error: cannot apply a type vector.
+test type [#true, #true] 3
+
+-- (app term/types) -------------------
+-- Error: cannot instantiate non-polymorphic value.
+test type 5 @#Nat
+
+-- Error: not enough arguments in type application.
+test type (λ@[a: #Data, b: #Data] → #unit) @[#Nat]
+
+-- Error: too many arguments in type application.
+test type (λ@[a: #Data] → #unit) @[#Nat, #Nat]
+
+-- Error: kind mismatch in application.
+test type (λ@[a: #Data] → #unit) @#Console
+
+-- (app term/terms) -------------------
+-- Error: cannot apply non function.
+test type 5 [1, 2]
+
+-- Error: not enough arguments.
+test type #bool'and [#true]
+
+-- Error: too many arguments.
+test type #bool'and [#true, #true, #true]
+
+-- Error: wrong argument types.
+test type #bool'and [1, 2]
+
+-- (app term/term) --------------------
+-- Error: cannot apply non function.
+test type 5 5
+
+-- Error: not enough arguments.
+test type #bool'and #true
+
+-- Error: too many arguments.
+test type #bool'and ((λ[] → [#true, #true, #true]) [])
+
+-- Error: wrong argument types.
+test type #bool'and ((λ[] → [1, 2]) [])
+
+-- Error: unsaturated primitive.
+test type #map'insert
+
+-- Error: unsaturated primitive.
+test type #map'insert @[#Nat, #Nat]
+
+
+-- (t-let) --------------------------------------------------------------------
+-- Error: ill-kinded annotation.
+test type let x: #Derp = #true in #true
+
+-- Error: ill-typed bound expression.
+test type let x = #true #true in #true
+
+-- Error: wrong arity in binding.
+test type let [] = [#true] in #true
+
+-- Error: wrong arity in binding.
+test type let x = [#true, #true] in #true
+
+-- Error: binder annotation does not match bound value.
+test type let x: #Nat = #true in #true
+
+-- Error: body term is ill-typed.
+test type let x = #true in #true #true
+
+-- Error: duplicate binder names.
+test type let [x, x] = [#true, #true] in x
+
+
+-- (t-rec) --------------------------------------------------------------------
+-- Error: ill kinded parameter annotation.
+test type rec { f [x: #Derp]: #Nat = #nat'add [x, 1] } in f [5]
+
+-- Error: ill kinded result type annotation.
+test type rec { f [x: #Nat]: #Derp = #nat'add [x, 1] } in f [5]
+
+-- Error: body type does not match result type annotation.
+test type rec { f [x: #Nat]: #Nat = #true } in f [5]
+
+-- Error: no parameters, value recursion not supported.
+test type rec { x: #Nat = #nat'add [x, 1] } in x
+
+-- Error: duplicate binders at same level.
+test type rec { f [x: #Nat]: #Nat = x
+              ; f [x: #Nat]: #Nat = #nat'add [x, 1] } in f 5
+
+
+-- (t-rcd) --------------------------------------------------------------------
+-- Error: field type does not match expected type.
+test type the [x: #Bool, y: #Nat] of [x = #true, y = #false]
+
+-- Error: expected type is not a record type.
+test type the #Nat of [x = #true, y = #false]
+
+-- Error: duplicate fields in record
+test type [x = 3, y = 3, x = 3]
+
+-- Error: duplicate fields in record
+test type [x = 3, y = 3, x = 3, y = 4]
+
+-- Error: ill-typed field.
+test type [x = #true #true]
+
+-- Error: field type does not match expected type,
+-- and we've looked through a synonym to see the expected type.
+type recx: #Data = [x: #Nat, y: #Nat]
+test type the recx of [x = 1, y = #true]
+
+
+-- (t-prj) --------------------------------------------------------------------
+-- Error: body does not have record type.
+test type #true.x
+
+-- Error: record does not have required field.
+test type [x = 3].y
+
+-- Error: body has too many values.
+test type [1, 2].x
+
+
+-- (t-vnt) --------------------------------------------------------------------
+-- Error: ascribed type is ill kinded.
+test type the #Nat #Nat of `foo #true
+
+-- Error: ascribed type is not a variant type.
+test type the #Nat of `foo #true
+
+-- Error: alternative type does not match expected type.
+test type the <foo: #Nat> of `foo #true
+
+-- Error: alternative type does not match expected type.
+test type the <foo: [#Nat, #Bool]> of `foo [3, 3]
+
+-- Error: variant alternative is not in expected type.
+test type the <bar: #Nat> of `foo 5
+
+
+-- (t-cse-vnt) ----------------------------------------------------------------
+-- Error: scrutinee is ill-typed.
+test type case 2 2 of { one [] → [] }
+
+-- Error: scrutinee does not have variant tpye.
+test type case 2 of { one [] → [] }
+
+-- Error: alternative is not in scrutinee type.
+test type case (the <foo: #Nat> of `foo 5) of { bar [] → [] }
+
+-- Error: pattern type does not match scrutinee type.
+test type case (the <foo: #Nat> of `foo 5) of { foo [x: #Bool] → [] }
+
+-- Error: case alternatives are overlapping.
+test type case (the <foo: #Nat> of `foo 5) of
+        { foo [x: #Bool] → []; foo [x: #Bool] → [] }
+
+-- Error: case alts are inexhaustive.
+test type case (the <foo: #Nat, bar: #Nat> of `foo 5) of
+        { foo [x: #Nat] → [] }
+
+-- Error: result types do not match.
+test type case (the <foo: #Nat, bar: []> of `foo 5) of
+        { foo [] → #true; bar [] → 5 }
+
+-- Error: case alt does not have enough binders.
+test type case (the <foo: [#Nat, #Nat]> of `foo [2, 3]) of
+        { foo [x: #Nat] → x }
+
+-- Error: case alt has too many binders.
+test type case (the <foo: [#Nat, #Nat]> of `foo [2, 3]) of
+        { foo [x: #Nat, y: #Nat, z: #Nat] → x }
+
+-- Error: case alt has duplicate binders
+test type case (the <foo: [#Nat, #Nat]> of `foo [2, 3]) of
+        { foo [x: #Nat, x: #Nat] → x }
+
+
+-- (t-ifs) --------------------------------------------------------------------
+-- Error: scrutinee is ill-typed.
+test type if 1 2 then #true else #true
+
+-- Error: scrutinee is not a boolean.
+test type if 5 then #true else #true
+
+-- Error: branches do not have the same types.
+-- TODO: fix branch comparison.
+test type if #true then #true else 5
+
+
+-- (t-lst) --------------------------------------------------------------------
+-- | Error: elem type is ill kinded.
+test type [list (#Nat #Nat)|]
+
+-- | Error: elem type does not have kind data.
+test type [list #Console|]
+
+-- | Error: element is ill typed.
+test type [list #Nat| 3 3]
+
+-- | Error: element type does not match annotation.
+test type [list #Nat| #true]
+
+
+-- (t-set) --------------------------------------------------------------------
+-- | Error: elem type is ill kinded.
+test type [set (#Nat #Nat)|]
+
+-- | Error: elem type does not have kind data.
+test type [set #Console|]
+
+-- | Error: element is ill typed.
+test type [set #Nat| 3 3]
+
+-- | Error: element type does not match annotation.
+test type [set #Nat| #true]
+
+
+-- (t-map) --------------------------------------------------------------------
+-- | Error: elem type is ill kinded.
+test type [map (#Nat #Nat) #Nat|]
+
+-- | Error: elem type does not have kind data.
+test type [map #Console #Nat|]
+
+-- | Error: element is ill typed.
+test type [map #Nat #Nat| 3 3 := 3]
+
+-- | Error: element type does not match annotation.
+test type [map #Nat #Nat| 3 := #true]
+
+
+-- (t-ptr) -------------------------------------------------------------------
+-- | Error: supplied type doesn't match ptr type
+test type freePtr'mismatch'type
+ = box private r with {Alloc; Read; Write} in do
+         p = #allocPtr @[r, #Word8]
+         #freePtr @[r, #Bool] p
+
+-- | Error: supplied type doesn't match ptr type
+test type readPtr'mismatch'type
+ = box private r with {Alloc; Read; Write} in do
+         p = #allocPtr @[r, #Word8]
+         #readPtr @[r, #Word16] p
+
+-- | Error: supplied region doesn't match ptr type
+test type readPtr'mismatch'region
+ = box private r1 with {Alloc; Read; Write} in
+         private r2 with {Alloc; Read; Write} in do
+           p = #allocPtr @[r1, #Word8]
+           #readPtr @[r2, #Word8] p
+
+-- | Bug: we are not yet rewriting the type of the returned pointer from r2 to
+-- r1.
+-- TODO FIXME
+test eval region'extend'rewriting
+ = private r1 with {Read; Write; Alloc} in do
+    p = #allocPtr @r1 @#Int8
+    #writePtr @r1 @#Int8 p #int8'20
+    -- when we return a pointer within an extended region we need to ensure we
+    -- rewrite it to now belong to the outer region.
+    p2 = extend r1 using r2 with {Read; Write; Alloc} in do
+        p = #allocPtr @r2 @#Int8
+        #writePtr @r2 @#Int8 p #int8'3
+        p
+    a = #readPtr @r1 @#Int8 p
+    b = #readPtr @r1 @#Int8 p2
+    #int8'add a b
+
+-- | Possible Bug: inner regions are not type compatible with outer regions.
+-- May not be a bug if the expectation is that complete rewriting happens at end
+-- of extended region scope.
+-- TODO FIXME
+test eval region'extend'compat
+ = private r1 with {Read; Write; Alloc} in
+     extend r1 using r2 with {Read; Write; Alloc} in do
+      p = #allocPtr @r2 @#Int8
+      #writePtr @r1 @#Int8 p #int8'12
+      #readPtr @r2 @#Int8 p
+
+-- (t-pack) ------------------------------------------------------------------
+-- | Error: pack ascription type is not an existential
+test type pack'not'existential
+ = pack 0 with [#Nat] as #Nat
+
+-- | Error: pack ascription type does not classify actual value
+test type pack'not'equiv
+ = pack [x=5, f=(λ[x:#Nat]->x)] with [#Nat] as ∃[a: #Data].∏[x:a, f:[a]->[#Bool]]
+
+-- | Error: number of packed types do not match number of existential type params
+test type pack'type'param'mismatch1
+ = pack 0 with [#Nat] as ∃[a: #Data, b:#Data].a
+
+-- | Error: number of packed types do not match number of existential type params
+test type pack'type'param'mismatch2
+ = pack 0 with [#Nat, #Nat] as ∃[a: #Data].a
+
+-- (t-unpack) ------------------------------------------------------------------
+-- | Error: value to unpack was not packed
+test type unpack'not'packed
+ = unpack 12 as val with [ty] in val
+
+-- | Error: number of bound types does not match number of existential type param
+test type unpack'type'param'mismatch1
+ = let t = pack 0 with [#Nat] as ∃[a: #Data].a in
+     unpack t as val with [tya, tyb] in val
+
+-- | Error: number of bound types does not match number of existential type param
+test type unpack'type'param'mismatch2
+ = let t = pack 0 with [#Nat] as ∃[a: #Data].a in
+     unpack t as val with [] in val

@@ -1,0 +1,28 @@
+
+
+-- Simple cell init and read.
+test eval do
+        cell x: #Nat ← 2
+        x
+
+
+-- Cell update.
+test eval do
+        cell x: #Nat ← 2
+        x ← 3
+        x
+
+
+-- Shadowed cell names.
+test eval do
+        cell x: #Nat ← 5
+        cell x: #Nat ← 6
+        x
+
+
+-- Update of cell that shadows another.
+test eval do
+        cell x: #Nat ← 5
+        cell x: #Nat ← 6
+        x ← 7
+        x

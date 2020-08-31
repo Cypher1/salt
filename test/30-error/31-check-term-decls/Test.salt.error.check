@@ -1,0 +1,13 @@
+test/30-error/31-check-term-decls/Test.salt:5:6
+  Actual type '#Bool'
+   does not match
+   expected type '#Nat'
+
+  5:6    In term declaration "term1"
+
+test/30-error/31-check-term-decls/Test.salt:8:6
+  Impure term declaration 'term2'
+   has effect '#Console'
+
+  8:6    In term declaration "term2"
+

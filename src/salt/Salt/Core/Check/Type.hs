@@ -1,106 +1,96 @@
 
 module Salt.Core.Check.Type where
-import Salt.Core.Check.Context
-import Salt.Core.Check.Eq
-import Salt.Core.Check.Kind
-import Salt.Core.Check.Where
-import Salt.Core.Check.Error
-import Salt.Core.Transform.MapAnnot
-import Salt.Core.Exp
+import Salt.Core.Check.Type.App
+import Salt.Core.Check.Type.Params
+import Salt.Core.Check.Type.Base
 import qualified Salt.Core.Prim.Ctor    as Prim
 import qualified Salt.Data.List         as List
-
-import Control.Monad
-import Control.Exception
 import qualified Data.Map               as Map
 
 
----------------------------------------------------------------------------------------------------
 -- | Check and elaborate a type producing, a new type and its kind.
 --   Type errors are thrown as exceptions in the IO monad.
-checkType :: Annot a => a -> [Where a]
-          -> Context a -> Type a -> IO (Type a, Kind a)
+checkTypeWith :: CheckType a
 
 -- (k-ann) ------------------------------------------------
-checkType _a wh ctx (TAnn a' t)
- = checkType a' wh ctx t
+checkTypeWith _a wh ctx (TAnn a' t)
+ = do   (t', k) <- checkType a' wh ctx t
+        return (TAnn a' t', k)
 
 
 -- (k-hole) -----------------------------------------------
-checkType _a _wh _ctx THole
+checkTypeWith _a _wh _ctx THole
  = return (THole, TData)
 
 
 -- (k-prm) ------------------------------------------------
-checkType a wh _ctx t@(TRef (TRPrm n))
+checkTypeWith a wh _ctx t@(TRef (TRPrm n))
  = case Map.lookup n Prim.primTypeCtors of
         Just k  -> return (t, mapAnnot (const a) k)
-        Nothing -> throw $ ErrorUnknownTypePrim a wh n
-
-
--- (k-con) ------------------------------------------------
-checkType _a _wh _ctx t@(TRef (TRCon _n))
- = error $ "TODO: check type synonyms" ++ show t
+        Nothing -> throw $ ErrorUnknownPrim UType a wh n
 
 
 -- (k-var) ------------------------------------------------
-checkType a wh ctx t@(TVar u)
- = do   mt <- contextResolveTypeBound u ctx
-        case mt of
-         Just k  -> return (t, k)
-         Nothing -> throw $ ErrorUnknownTypeBound a wh u
+checkTypeWith a wh ctx t@(TVar u)
+ = contextResolveTypeBound ctx [] u
+ >>= \case
+         Just (TypeDecl  k _) -> return (t, k)
+         Just (TypeLocal k _) -> return (t, k)
+         _ -> throw $ ErrorUnknownBound UType a wh u
 
 
 -- (k-abs) ------------------------------------------------
-checkType a wh ctx (TAbs ps tBody)
- = do   ps'     <- checkTypeParams a wh ctx ps
+checkTypeWith a wh ctx (TAbs ps tBody)
+ = do
+        ps'@(TPTypes bks)  <- checkTypeParams a wh ctx ps
         let ctx' = contextBindTypeParams ps' ctx
         (tBody', kResult)  <- checkType a wh ctx' tBody
-        let TPTypes bks = ps'
-        let ksParam     = map snd bks
+        let ksParam  = map snd bks
         return  ( TAbs ps' tBody'
                 , TArr ksParam kResult)
 
 
+-- (k-arr) ------------------------------------------------
+checkTypeWith a wh ctx (TArr ks1 k2)
+ = do   ks1'    <- mapM (checkKind a wh ctx) ks1
+        k2'     <- checkKind a wh ctx k2
+        return  (TArr ks1' k2', TType)
+
+
 -- (k-app) ------------------------------------------------
-checkType a wh ctx (TApt tFun tsArg)
- = do   (tFun',  kFun)    <- checkType a wh ctx tFun
-        (tsArg', kResult) <- checkTypeAppTypes a wh ctx kFun tsArg
-        return  (TApt tFun' tsArg', kResult)
+checkTypeWith a wh ctx (TApp tFun tgsArg)
+ = do   let aFun = fromMaybe a $ takeAnnotOfType tFun
+        (tFun',  kFun)     <- checkType a wh ctx tFun
+        (tgsArg', kResult) <- checkTypeAppTypes a wh ctx aFun kFun tgsArg
+        return  (TApp tFun' tgsArg', kResult)
 
 
 -- (k-all) ------------------------------------------------
-checkType a wh ctx (TForall bks tBody)
- = do   TPTypes bks' <- checkTypeParams a wh ctx (TPTypes bks)
-        let ctx' = contextBindTypeParams (TPTypes bks') ctx
-        tBody'  <- checkTypeIs a wh ctx' tBody TData
-        return  (TForall bks' tBody', TData)
+checkTypeWith a wh ctx (TForall tps tBody)
+ = do   tps'    <- checkTypeParams a wh ctx tps
+        let ctx' = contextBindTypeParams tps' ctx
+        tBody'  <- checkTypeHas UType a wh ctx' TData tBody
+        return  (TForall tps' tBody', TData)
 
 
 -- (k-ext) ------------------------------------------------
-checkType a wh ctx (TExists bks tBody)
- = do   TPTypes bks' <- checkTypeParams a wh ctx (TPTypes bks)
-        let ctx' = contextBindTypeParams (TPTypes bks') ctx
-        tBody'  <- checkTypeIs a wh ctx' tBody TData
-        return  (TExists bks' tBody', TData)
+checkTypeWith a wh ctx (TExists tps tBody)
+ = do   tps'    <- checkTypeParams a wh ctx tps
+        let ctx' = contextBindTypeParams tps' ctx
+        tBody'  <- checkTypeHas UType a wh ctx' TData tBody
+        return  (TExists tps' tBody', TData)
 
 
 -- (k-fun) ------------------------------------------------
-checkType a wh ctx (TFun tsParam tsResult)
- = do
-        tsParam'  <- checkTypesAre a wh ctx tsParam
-                  $  replicate (length tsParam)  TData
-
-        tsResult' <- checkTypesAre a wh ctx tsResult
-                  $  replicate (length tsResult) TData
-
+checkTypeWith a wh ctx (TFun tsParam tsResult)
+ = do   tsParam'  <- checkTypesAreAll UType a wh ctx TData tsParam
+        tsResult' <- checkTypesAreAll UType a wh ctx TRepr tsResult
         return  (TFun tsParam' tsResult', TData)
 
 
 -- (k-rec) ------------------------------------------------
-checkType a wh ctx (TRecord ns tgsField)
- = do
-        let nsDup = List.duplicates ns
+checkTypeWith a wh ctx (TRecord ns tgsField)
+ = do   let nsDup = List.duplicates ns
         when (not $ null nsDup)
          $ throw $ ErrorRecordTypeDuplicateFields a wh nsDup
 
@@ -109,9 +99,8 @@ checkType a wh ctx (TRecord ns tgsField)
 
 
 -- (k-vnt) ------------------------------------------------
-checkType a wh ctx (TVariant ns tgsField)
- = do
-        let nsDup = List.duplicates ns
+checkTypeWith a wh ctx (TVariant ns tgsField)
+ = do   let nsDup = List.duplicates ns
         when (not $ null nsDup)
          $ throw $ ErrorVariantTypeDuplicateAlts a wh nsDup
 
@@ -120,128 +109,31 @@ checkType a wh ctx (TVariant ns tgsField)
 
 
 -- (k-susp) -----------------------------------------------
-checkType a wh ctx (TSusp tsResult tEffect)
- = do
-        tsResult' <- checkTypesAre a wh ctx tsResult
-                  $  replicate (length tsResult) TData
-
-        tEffect'  <- checkTypeIs a wh ctx tEffect TEffect
-
-        return  (TSusp tsResult' tEffect', TData)
+checkTypeWith a wh ctx (TSusp tsResult tEffect)
+ = do   tsResult' <- checkTypesAreAll UType a wh ctx TData tsResult
+        tEffect'  <- checkTypeHas UType a wh ctx TEffect tEffect
+        return  (TSusp tsResult' tEffect', TComp)
 
 
 -- (k-sync) -----------------------------------------------
-checkType _a _wh _ctx TSync
+checkTypeWith _a _wh _ctx TSync
  = do   return (TSync, TEffect)
 
 
 -- (k-pure) -----------------------------------------------
-checkType _a _wh _ctx TPure
+checkTypeWith _a _wh _ctx TPure
  = do   return (TPure, TEffect)
 
 
 -- (k-sum) ------------------------------------------------
-checkType a wh ctx (TSum ts)
- = do
-        ts'     <- checkTypesAre a wh ctx ts
-                $  replicate (length ts) TEffect
-
+checkTypeWith a wh ctx (TSum ts)
+ = do   ts' <- checkTypesAreAll UType a wh ctx TEffect ts
         return  (TSum ts', TEffect)
 
 
 -----------------------------------------------------------
 -- The type expression is malformed,
 --   so we don't have any rule that could match it.
-checkType a wh _ t
- = throw $ ErrorTypeMalformed a wh t
-
-
----------------------------------------------------------------------------------------------------
--- | Check the kinds of some types.
-checkTypes
-        :: Annot a => a -> [Where a]
-        -> Context a -> [Type a] -> IO ([Type a], [Kind a])
-checkTypes a wh ctx ts
- = fmap unzip $ mapM (checkType a wh ctx) ts
-
-
--- | Check the kind of a single type matches the expected one.
-checkTypeIs
-        :: Annot a => a -> [Where a]
-        -> Context a -> Type a -> Kind a -> IO (Type a)
-checkTypeIs a wh ctx t k
- = do   [t']    <- checkTypesAre a wh ctx [t] [k]
-        return t'
-
-
--- | Check the kinds of some types match the expected ones.
-checkTypesAre
-        :: Annot a => a -> [Where a]
-        -> Context a -> [Type a] -> [Kind a] -> IO [Type a]
-
-checkTypesAre a wh ctx ts ksExpected
- = do   (ts', ksActual) <- checkTypes a wh ctx ts
-
-        if length ts' /= length ksActual
-         then throw $ ErrorAppTypeTypeWrongArity a wh ksExpected ksActual
-         else case checkTypeEqs a [] ksExpected a [] ksActual of
-                Just ((_aErr1', kErr1), (_aErr2, kErr2))
-                 -> throw  $ ErrorTypeMismatch a wh kErr1 kErr2
-
-                Nothing -> return ts'
-
-
----------------------------------------------------------------------------------------------------
--- | Check some type parameters.
-checkTypeParams
-        :: Annot a => a -> [Where a]
-        -> Context a -> TypeParams a -> IO (TypeParams a)
-
-checkTypeParams a wh ctx tps
- = case tps of
-        TPTypes bks
-         -> do  let (bs, ks) = unzip bks
-                ks' <- mapM (checkKind a wh ctx) ks
-                return $ TPTypes $ zip bs ks'
-
-
----------------------------------------------------------------------------------------------------
--- | Check some type arguments parameters.
-checkTypeArgsAreAll
-        :: Annot a => a -> [Where a]
-        -> Context a -> Kind a -> TypeArgs a ->  IO (TypeArgs a)
-
-checkTypeArgsAreAll a wh ctx kExpected tgs
- = case tgs of
-        TGTypes ts
-         -> do  ts' <- checkTypesAre a wh ctx ts
-                     $ replicate (length ts) kExpected
-                return $ TGTypes ts'
-
-
----------------------------------------------------------------------------------------------------
--- | Check the application of a type to some types.
-checkTypeAppTypes
-        :: Annot a => a -> [Where a]
-        -> Context a -> Kind a -> [Type a] -> IO ([Type a], Kind a)
-
-checkTypeAppTypes a wh ctx kFun tsArg
- = case kFun of
-        TArr ksParam kResult
-          -> goCheckArgs ksParam kResult
-        _ -> throw $ ErrorAppTypeTypeCannot a wh kFun
- where
-        goCheckArgs ksParam kResult
-         = do   if length ksParam /= length tsArg
-                 then throw $ ErrorAppTypeTypeWrongArityNum a wh ksParam (length tsArg)
-                 else do
-                        (tsArg', ksArg) <- checkTypes a wh ctx tsArg
-                        goCheckParams ksParam kResult tsArg' ksArg
-
-        goCheckParams ksParam kResult tsArg' ksArg
-         = case checkTypeEqs a [] ksParam a [] ksArg of
-                Just ((_aErr1', kErr1), (_aErr2, kErr2))
-                 -> throw $ ErrorTypeMismatch a wh kErr1 kErr2
-
-                Nothing -> return (tsArg', kResult)
+checkTypeWith a wh _ t
+ = throw $ ErrorTypeMalformed UType a wh t
 

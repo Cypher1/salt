@@ -1,0 +1,42 @@
+-- Trigger all the errors that can be produced by
+-- 'goTermSigs' when checking the top-level module structure.
+
+-- Error: Malformed type annotations on term declaration.
+term term1 [x: #Derp]: #Nat = 5
+
+-- Error: Malformed result type.
+term term2 [x: #Nat]: #Derp = 5
+
+-- Error: Term declaration has duplicate parameters.
+term term3 [x: #Nat, x: #Nat]: #Nat = x
+
+-- Error: Term declaration is rebound
+term term4: #Nat = 1
+term term4: #Nat = 2
+
+-- Error: Term declaration does not produce a value.
+term term5 @[a: #Data]: [] = []
+test type term5 = term5
+
+-- Error: Term declaration does not bind a value.
+term term6: [] = []
+
+-- Error: Malformed type annotations on proc declaration.
+proc proc1 [x: #Derp]: #Nat = 5
+
+-- Error: Malformed result type.
+proc proc2 [x: #Nat]: #Derp = 5
+
+-- Error: Proc declaration has duplicate parameters.
+proc proc3 [x: #Nat, x: #Nat]: #Nat = x
+
+-- Error: Proc declaration is rebound
+proc proc4 []: #Nat = 1
+proc proc4 []: #Nat = 2
+
+-- Error: Proc declaration does not produce a value.
+proc proc5 @[a: #Data]: [] = []
+test type term5 = term5
+
+-- Error: Proc declaration does not have parameters.
+proc proc6: #Nat = 5

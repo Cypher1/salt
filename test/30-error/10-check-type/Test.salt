@@ -1,0 +1,116 @@
+-- Trigger all the errors that can be produced by checkType.
+
+-- (k-prm) --------------------------------------------------------------------
+-- Error: unknown type primitive.
+test kind #derp
+
+
+-- (k-var) --------------------------------------------------------------------
+-- Error: unknown type name.
+test kind a
+
+
+-- (k-abs) --------------------------------------------------------------------
+-- Error: parameter kind is ill-formed.
+test kind (λ[a: #Derp] ⇒ a)
+
+-- Error: conflicting type binders
+test kind (λ[a: #Data, a: #Data] ⇒ #List a)
+
+-- Error: body type is ill-kinded.
+test kind (λ[a: #Effect] ⇒ #List a)
+
+
+-- (k-app) --------------------------------------------------------------------
+-- Error: parameter kind is ill-formed. Unknown kind constructor.
+test kind (λ[a: #Derp] ⇒ a) #Nat
+
+-- Error: argument type is ill-formed. Unknown type primitive.
+test kind (λ[a: #Data] ⇒ a) #Derp
+
+-- Error: kind of argument does not match parameter.
+test kind (λ[a: #Effect] ⇒ a) #Nat
+
+-- Error: not enough arguments in application.
+test kind (λ[a: #Data, b: #Data] ⇒ #Map [a, b]) [#Nat]
+
+-- Error: no arguments in application
+test kind (λ[a: #Data] ⇒ a) []
+
+-- Error: too many enough arguments in application.
+test kind (λ[a: #Data, b: #Data] ⇒ #Map [a, b]) [#Nat, #Nat, #Bool]
+
+-- Error: too many enough arguments in application.
+test kind (λ[a: #Data, b: #Data] ⇒ #Map [a, b, b]) [#Nat, #Nat]
+
+
+-- (k-all) --------------------------------------------------------------------
+-- Error: parameter kind is ill-formed.
+test kind (∀[a: #Derp]. #Nat)
+
+-- Error: duplicate binder names.
+test kind (∀[a: #Data, a: #Data]. #Nat)
+
+-- Error: body type does not have kind data.
+test kind (∀[a: #Effect]. a)
+
+
+-- (k-ext) --------------------------------------------------------------------
+-- Error: parameter kind is ill-formed.
+test kind (∃[a: #Derp]. #Nat)
+
+-- Error: duplicate binder names.
+test kind (∃[a: #Data, a: #Data]. #Nat)
+
+-- Error: body type does not have kind data.
+test kind (∃[a: #Effect]. a)
+
+
+-- (k-fun) --------------------------------------------------------------------
+-- Error: parameter type is ill-formed.
+test kind [#Derp] -> []
+
+-- Error: parameter type has wrong kind.
+test kind [#Console] -> []
+
+-- Error: result type is ill-formed.
+test kind [] -> [#Derp]
+
+-- Error: result type has wrong kind.
+test kind [] -> [#Console]
+
+
+-- (k-rec) --------------------------------------------------------------------
+-- Error: field does not have kind data.
+test kind [x: #Console]
+
+-- Error: field does not have kind data.
+test kind [x: [#Nat, #Console]]
+
+-- Error: duplicate fields in record type.
+test kind [x: #Nat, x: #Nat, y: #Nat]
+
+
+-- (k-vnt) --------------------------------------------------------------------
+-- Error: alternative does not have kind data.
+test kind <x: #Console>
+
+-- Error: alternative does not have kind data.
+test kind <x: [#Nat, #Console]>
+
+-- Error: duplicate alternatives in variant type.
+test kind <x: #Nat, x: #Nat, y: #Nat>
+
+
+-- (k-susp) -------------------------------------------------------------------
+-- Error: result type has wrong kind.
+test kind #Console ! pure
+
+-- Error: effect type has wrong kind
+test kind [] ! #Nat
+
+
+-- (k-sum) --------------------------------------------------------------------
+-- Error: effect sum component has wrong kind.
+test kind #Console + #Nat
+

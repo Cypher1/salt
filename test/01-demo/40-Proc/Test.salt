@@ -1,0 +1,22 @@
+
+term derp [n: #Nat]: #Nat ! #Console
+ = box launch #Nat of
+   let x  = 5;
+   let y  = the <foo: #Nat> of `foo 4;
+   let [] = #console'print "derp";
+   when (#nat'eq x 0) return 3;
+   cell n: #Nat ← 0;
+   loop #console'print "derp";
+   [3]
+
+
+term derps [n: #Nat]: #Nat ! #Console
+ = box launch #Nat of do
+   let x = 5
+   let y = the <foo: #Nat> of `foo 4
+   seq #console'print "derp"
+   when (#nat'eq x 0) return 3
+   cell n: #Nat ← 0
+   loop #console'print "derp"
+   [n]
+

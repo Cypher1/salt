@@ -13,7 +13,9 @@ SALT_PACKAGES := \
         -package filepath \
         -package inchworm \
         -package parsec \
-        -package pretty-show
+        -package json \
+        -package pretty-show \
+        -package unix
 
 WAR_PACKAGES := \
         -hide-all-packages \
@@ -38,6 +40,7 @@ WAVES_PACKAGES := \
 #   we don't enable advanced GHC type system extensions globally
 #
 GHC_LANGUAGE := \
+	-XStrict \
 	-XLambdaCase \
 	-XRankNTypes \
         -XViewPatterns \
@@ -51,6 +54,7 @@ GHC_LANGUAGE := \
         -XPatternSynonyms \
 	-XFlexibleContexts \
         -XParallelListComp \
+	-XTypeApplications \
 	-XOverloadedStrings \
         -XFlexibleInstances \
 	-XStandaloneDeriving \
@@ -95,6 +99,14 @@ THREAD          = 3
 # Run ghc in the cabal environment so that if there is a cabal sandbox, it will be used.
 GHC             = cabal v1-exec -- ghc
 GHC_FLAGS       = -Werror -O0 -j3
+
+
+# Installer to use for dependencies -------------------------------------------
+# Use Cabal by default:
+DEPS_INSTALLER = cabal
+# If you prefer stack:
+# DEPS_INSTALLER = stack
+
 
 # Override config with local config if it exists.
 #  If you want to change the THREADs or GHC variables then add local

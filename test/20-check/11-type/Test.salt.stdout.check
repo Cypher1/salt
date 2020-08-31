@@ -1,0 +1,9 @@
+* nat
+* [[] → [foo]] → [[#Nat]!(#Console + #Sleep)]
+* [thing2thing] → [#Nat]
+* [nat2nats] → [#Nat]
+* []!(#Console)
+* [nat2nat] → [#Nat]
+* [recy] → [#Nat]
+* vntx
+* [vnty] → [#Nat]

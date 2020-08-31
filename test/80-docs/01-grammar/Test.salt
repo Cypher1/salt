@@ -1,0 +1,47 @@
+
+-- Examples from docs/01-grammar.md
+
+-- Draw a square.
+proc square1 []: []! #Console
+ = cell x: #Nat ← 9
+ ; while (#nat'gt [x, 0])
+          ( cell y: #Nat ← 9
+          ; while (#nat'gt [y, 0])
+                  ( seq #console'print "*"
+                  ; update y ← #nat'sub [y, 1]
+                  ; end)
+          ; seq #console'print "\n"
+          ; update x ← #nat'sub [x, 1]
+          ; end)
+ ; #console'println "done"
+
+test exec square1 []
+
+
+proc square2 []: []! #Console
+ = do   { cell x: #Nat ← 9
+        ; while (#nat'gt [x, 0])
+          do    { cell y: #Nat ← 9
+                ; while (#nat'gt [y, 0])
+                  do    { #console'print "*"
+                        ; y ← #nat'sub [y, 1] }
+                ; #console'print "\n"
+                ; x ← #nat'sub [x, 1] }
+        ; #console'println "done" }
+
+test exec square2 []
+
+
+proc square3 []: []! #Console
+ = do   cell x: #Nat ← 9
+        while (#nat'gt [x, 0]) do
+                cell y: #Nat ← 9
+                while (#nat'gt [y, 0]) do
+                        #console'print "*"
+                        y  ← #nat'sub [y, 1]
+                #console'print "\n"
+                x ← #nat'sub [x, 1]
+        #console'println "done"
+
+
+test exec square3 []

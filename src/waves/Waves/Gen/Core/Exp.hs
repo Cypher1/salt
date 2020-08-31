@@ -44,9 +44,16 @@ type_ = Gen.recursive Gen.choice
   ]
   [ TAbs <$> typeParams <*> type_
   , uncurry TKey <$> typeKey
+
+  -- Don't generate annotations. Function stripAnnot replaces annotation contents:
+  -- > (TAnn x e ~> TAnn () e),
+  -- but in this case it'd be useful to rewrite
+  -- > (TAnn x e ~> e)
+
+  -- , TAnn () <$> type_
   ]
 
-typeRef :: Gen TypeRef
+typeRef :: Gen (TypeRef ())
 typeRef = Gen.choice
   [ TRPrm <$> namePrim
   , TRCon <$> nameCon
@@ -64,17 +71,26 @@ typeKey = Gen.choice
   , argsN (return TKArr) [r13, r11]
   , argsN (return TKApp) [r11, r13]
   , argsN (return TKFun) [r03, r03]
+  , (,) TKForall <$> tAbs
+  , (,) TKExists <$> tAbs
+  , (\nts -> (TKRecord (map fst nts), map (TGTypes . (:[]) . snd) nts)) <$> typeFields
+  , (\nts -> (TKVariant (map fst nts), map (TGTypes . (:[]) . snd) nts)) <$> typeFields
   -- TODO: generate types for the following keys
-  -- , argsN (return TKForall) [r11]
-  -- , argsN (return TKExists) [r11]
-  -- , argsN (TKRecord <$> Gen.list (Range.linear 1 3) nameCon) [r03]
-  -- , argsN (TKVariant <$> Gen.list (Range.linear 1 3) nameCon) [r03]
+  -- , argsN (return TKSusp) [r03, r11]
+  -- , argsN (return TKPure) []
+  -- , argsN (return TKSync) []
+  -- , argsN (return TKSum)  [r03]
   ]
  where
   argsN k ns = (,) <$> k <*> mapM (\r -> TGTypes <$> Gen.list r type_) ns
   r11 = Range.linear 1 1
   r13 = Range.linear 1 3
   r03 = Range.linear 0 3
+  tAbs = ((:[]) . TGTypes . (:[])) <$> (TAbs <$> typeParams <*> type_)
+
+typeFields :: Gen [(Name, Type ())]
+typeFields = Gen.list (Range.linear 0 3) ((,) <$> nameVar <*> type_)
+
 
 
 -- Something bigger than a machine int
@@ -88,6 +104,12 @@ valuePrimitive = Gen.choice
   , VNat <$> Gen.integral (Range.linear 0 largeInteger)
   -- TODO: the pretty-printer is ambiguous for positive ints and nats
   , VInt <$> Gen.integral (Range.linear (-largeInteger) (-1))
-  , VText <$> Gen.text (Range.linear 0 100) Gen.unicodeAll
+  , valueText (Range.linear 0 100)
   ]
 
+valueText :: Range Int -> Gen (Value ())
+valueText len = VText <$> Gen.choice
+  -- Restricting the generator to ascii characters is more likely to find escaping issues
+  [ Gen.text len Gen.ascii
+  , Gen.text len Gen.unicodeAll
+  ]

@@ -21,8 +21,10 @@
 * op3'sugar: #Data
 * all1: #Data
 * all1'sugar: #Data
+* all1'region: #Data
 * some1: #Data
 * some1'sugar: #Data
+* some1'region: #Data
 * rec0: #Data
 * rec1: #Data
 * rec2: #Data
@@ -53,12 +55,13 @@
 * effect4: #Effect
 * effect5: #Effect
 * effect6: #Effect
-* susp1: #Data
-* susp2: #Data
+* effect7: #Effect
+* susp1: #Comp
+* susp2: #Comp
 * susp3: #Data
-* susp4: #Data
-* susp5: #Data
-* susp6: #Data
+* susp4: #Comp
+* susp5: #Comp
+* susp6: #Comp
 * quoted1: [#Data] ⇒ #Data
 * quoted2: [#Data] ⇒ #Data
 * quoted3: [[#Data] ⇒ #Data] ⇒ [#Data] ⇒ #Data

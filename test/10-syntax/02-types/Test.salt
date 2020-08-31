@@ -1,3 +1,4 @@
+-- Test syntax of types.
 
 -- Check kinding of primitive data constructors.
 test kind unit          = #Unit
@@ -22,7 +23,6 @@ test kind map'nat       = #Map [#Nat, #Text]
 -- Nested application.
 test kind app'set'set   = #Set [#Set [#Nat]]
 
-
 -- Type function.
 test kind op1           = λ[a: #Data, b: #Data] ⇒ a
 test kind op2           = λ[a: #Data ⇒ #Data] ⇒ a
@@ -38,15 +38,17 @@ test kind all1          = ∀[a: #Data, b: #Data]. a → b
 
 test kind all1'sugar    = forall [a: #Data, b: #Data]. a -> b
 
+test kind all1'region   = forall [r: #Region, t: #Data]. #Ptr [r, t] -> #Ptr [r, t]
 
 -- Exists type.
 test kind some1         = ∃[a: #Data, b: #Data]. a → b
 
 test kind some1'sugar   = exists [a: #Data, b: #Data]. a → b
 
+test kind some1'region  = exists [a: #Region, b: #Region, t: #Data]. #Ptr [a, t] -> #Ptr [b, t]
 
 -- Record types.
-test kind rec0          = ∏[]
+test kind rec0          = ∏[foo: #Symbol]
 test kind rec1          = ∏[one: #Symbol, two: #Nat]
 test kind rec2          = ∏[one: #Symbol, two: ∏[foo: #Nat]]
 
@@ -90,6 +92,7 @@ test kind effect3       = #Console
 test kind effect4       = #Console + #Sleep
 test kind effect5       = pure + #Console + (#Sleep + sync)
 test kind effect6       = (pure + #Console) + (#Sleep + sync)
+test kind effect7       = #Memory
 
 
 -- Suspension types.
@@ -102,7 +105,7 @@ test kind susp6         = []! sync
 
 
 -- Quoted identifiers
-test kind quoted1 = fun [##Var"x" : #Data] => x
-test kind quoted2 = fun [##Var"x" : ##Prm"Data"] => ##Var"x"
-test kind quoted3 = fun [##Var"->" : #Data => #Data] => ##Var"->"
+test kind quoted1       = fun [##Var"x" : #Data] => x
+test kind quoted2       = fun [##Var"x" : ##Prm"Data"] => ##Var"x"
+test kind quoted3       = fun [##Var"->" : #Data => #Data] => ##Var"->"
 

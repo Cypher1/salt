@@ -5,30 +5,44 @@
 * bool'false2: #Bool
 * nat1: #Nat
 * nat1234: #Nat
+* nat'2: #Nat
+* int'1: #Int
+* word'1: #Word
+* int8'127: #Int8
+* int16'32767: #Int16
+* int32'2147483647: #Int32
+* int64'1: #Int64
+* word8'255: #Word8
+* word16'65535: #Word16
+* word32'4294967295: #Word32
+* word64'1: #Word64
 * symbol: #Symbol
 * symbol2: #Symbol
 * vec: [#Nat,#Nat,#Nat]
-* none: []
+* none1: []
 * the'nat: #Nat
 * the'things: [#Nat,#Bool]
 * the'nat's: #Nat
 * the'things's: [#Nat,#Bool]
-* abs1: [#Bool] → [#Bool]
-* abs2: [#Bool, #Nat] → [#Bool]
-* abs3: [#Bool, #Nat] → [#Bool, #Nat]
-* abs4: [#Bool, #Nat] → []
-* abs5: [] → []
-* abs1'sugar: [#Bool] → [#Bool]
-* abs2'sugar: [#Bool, #Nat] → [#Bool]
-* abs3'sugar: [#Bool, #Nat] → [#Bool, #Nat]
-* abs4'sugar: [#Bool, #Nat] → []
-* abs5'sugar: [] → []
 * abt1: ∀[a: #Data]. [a] → [a]
 * abt2: ∀[a: #Data]. [a] → [a]
 * abt3: ∀[a: #Data, b: #Data]. [[a] → [b], a] → [b]
+* abt1'bump: ∀[a: #Data]. ∀[a: #Data]. [[a^1] → [a^1], a^1] → [a^1]
 * abt1'sugar: ∀[a: #Data]. [a] → [a]
 * abt2'sugar: ∀[a: #Data]. [a] → [a]
 * abt3'sugar: ∀[a: #Data, b: #Data]. [[a] → [b], a] → [b]
+* abm1: [#Bool] → [#Bool]
+* abm2: [#Bool, #Nat] → [#Bool]
+* abm3: [#Bool, #Nat] → [#Bool, #Nat]
+* abm4: [#Bool, #Nat] → []
+* abm5: [] → []
+* abm1'bump: [#Bool] → [[#Nat] → [#Bool]]
+* abm1'sugar: [#Bool] → [#Bool]
+* abm2'sugar: [#Bool, #Nat] → [#Bool]
+* abm3'sugar: [#Bool, #Nat] → [#Bool, #Nat]
+* abm4'sugar: [#Bool, #Nat] → []
+* abm5'sugar: [] → []
+* rec1: #Nat
 * appm'not: #Bool
 * appm'not'1: #Bool
 * appm'and: #Bool
@@ -46,6 +60,7 @@
 * let'some: #Nat
 * if'then'else: #Nat
 * ifs'three: #Nat
+* ifs'three'else: #Nat
 * do'fst: #Bool
 * do'some: #Nat
 * do'things: #Nat
@@ -69,8 +84,8 @@
 * variant2: ∑[foo: [#Nat, #Nat]]
 * case0: [∑[none: #Unit, some: #Nat]] → [#Nat]
 * case1: [∑[none: [], one: #Nat, two: [#Nat, #Nat]]] → [#Nat]
-* none: #Option [#Nat]
-* some: #Option [#Nat]
+* option'none: #Option [#Nat]
+* option'som: #Option [#Nat]
 * list'empty: #List [#Nat]
 * list'some: #List [#Nat]
 * list'head: #Option [#Nat]
@@ -82,3 +97,8 @@
 * map'some: #Map [#Nat, #Symbol]
 * map'size: #Nat
 * map'insert: #Map [#Nat, #Symbol]
+* region'private: []
+* region'extend: []
+* pack'useless: ∃[a: #Data]. a
+* pack'useful: ∃[a: #Data]. ∏[x: a, f: [a] → [#Nat]]
+* unpack'pack: #Nat

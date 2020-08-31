@@ -20,13 +20,13 @@ Prm     → (primitive name,      like "#add")
 
 ```
 Decl
- ::=    'type'  Con TypeParams?  ':' Type '=' Type      (type bindings)
-  |     'term'  Var TermParams?  ':' Type '=' Term      (term bindings)
+ ::=  'type'  Con TypeParams?  ':' Type '=' Type      (type bindings)
+  |   'term'  Var TermParams?  ':' Type '=' Term      (term bindings)
 
-  |     'test' 'kind'   (Name '=')? Type                (print the kind of a type)
-  |     'test' 'type'   (Name '=')? Term                (print the type of a term)
-  |     'test' 'eval'   (Name '=')? Term                (print the result of term evaluation)
-  |     'test' 'assert' (Name '=')? Term                (assert that a term evaluates to true)
+  |   'test' 'kind'   (Name '=')? Type                (print the kind of a type)
+  |   'test' 'type'   (Name '=')? Term                (print the type of a term)
+  |   'test' 'eval'   (Name '=')? Term                (print the result of term evaluation)
+  |   'test' 'assert' (Name '=')? Term                (assert that a term evaluates to true)
 
 ```
 
@@ -79,7 +79,8 @@ TypeParams
  ::=  '[' (Var ':' Type),+ ']'
 
 Prm
- :+=  '#Data' | '#Region'
+ :+=  '#Type'
+  |   '#Data' | '#Region'
   |   '#Unit' | '#Bool' | '#Nat' | '#Int' | '#Text' | '#Symbol'
   |   '#List' | '#Set'  | '#Map' | '#Option'
 ```
@@ -100,7 +101,7 @@ Prm
 
 - `tsum` is used to combine effect types.
 
-- `Prm` gives the list of baked-in primitive types which are needed to classify type and term level constructs that are described in the language definition. The implementation may also provide other machine level types, but they are listed separately. `#Data` and `#Region` are the kinds of data and region types. The others are standard type constructors.
+- `Prm` gives the list of baked-in primitive types which are needed to classify type and term level constructs that are described in the language definition. The implementation may also provide other machine level types, but they are listed separately. `#Type` (at level 3) classifies well formed kinds. `#Data` and `#Region` (at level 2) are the kinds of data and region types. The others (at level 1) are standard type constructors.
 
 
 ### Type Sugar
@@ -130,47 +131,55 @@ All type expressions can be written without using unicode characters, using the 
 
 ```
 Term
- ::=  mvar Var                      (Var)
-  |   mcon Con                      (Con)
-  |   msym Sym                      ('Sym)
-  |   mprm Prm                      (#Prm)
+ ::=  mvar   Var                    (Var)
+  |   mcon   Con                    (Con)
+  |   msym   Sym                    ('Sym)
+  |   mprm   Prm                    (#Prm)
 
-  |   mmmm Termⁿ                    ('[' Term,* ']')
+  |   mmmm n Termⁿ                  ('[' Term,* ']')
 
-  |   mthe Typeⁿ Term               ('the' Types '.' Term)
+  |   mthe n Typeⁿ Term             ('the' Types 'of' Term)
 
-  |   mapp Term TermArgs            (Term  TermArgs)
-  |   mabs TermParams Term          ('λ'   TermParams '→'  Term)
+  |   mapp   Term TermArgs          (Term  TermArgs)
+  |   mabs   TermParams Term        ('λ'   TermParams '→'  Term)
 
-  |   mlet Varⁿ Term Term           ('let' TermBind ';' Term)
+  |   mlet n Varⁿ Term Term         ('let' TermBind ';' Term)
 
-  |   mifs Termⁿ Termⁿ Termⁿ        ('if' '{' (Term '→' Term);* 'otherwise' '→' Term '}' )
+  |   mifs n Termⁿ Termⁿ Term       ('ifs' '{' (Term '→' Term);* '}'
+                                           'else' Term)
 
-  |   mrec Lblⁿ Termⁿ               (∏ '[' (Lbl '=' Term),* ']')
-  |   mprj Term Lbl                 (Term '.' Lbl)
+  |   mrec n Lblⁿ Termⁿ             ('∏' '[' (Lbl '=' Term),* ']')
+  |   mprj   Term Lbl               (Term '.' Lbl)
 
-  |   mvnt Lbl  Term Type           ('`' Lbl Term as Type)
-  |   mcse Term Lblⁿ Typeⁿ Termⁿ    ('case' Term 'of' '{' (Lbl '[' Var ':' Type ']' → Term);+ '}')
+  |   mvnt   Lbl  Term Type         ('the' Type  'of' '`' Lbl Term)
 
-  |   mlst Type Termⁿ               ('[list' Type '|' Term,* ']')
-  |   mset Type Termⁿ               ('[set'  Type '|' Term,* ']')
-  |   mmap Type Type Termⁿ Termⁿ    ('[map'  Type Type '|' TermMapBind,* ']')
+  |   mcse n Term Lblⁿ Typeⁿ Termⁿ  ('case' Term 'of'
+                  Term?                   '{' (Lbl '[' (Var ':' Type),* ']' → Term);+ '}'
+                                          ('else' Term)?)
 
+  |   mbox   Term                   ('box' Term)
+  |   mrun   Term                   ('run' Term)
+
+  |   mlst n Type Termⁿ             ('[list' Type '|' Term,* ']')
+  |   mset n Type Termⁿ             ('[set'  Type '|' Term,* ']')
+  |   mmap n Type Type Termⁿ Termⁿ  ('[map'  Type Type '|' TermMapBind,* ']')
+
+  |   Proc                          (Proc)
 
 TermParams
- ::=  mpst Varⁿ Typeⁿ               ('@' '[' (Var ':' Type),* ']')
-  |   mpsm Varⁿ Typeⁿ               (    '[' (Var ':' Type),* ']')
+ ::=  mpst n Varⁿ Typeⁿ             ('@' '[' (Var ':' Type),* ']')
+  |   mpsm n Varⁿ Typeⁿ             (    '[' (Var ':' Type),* ']')
 
 TermArgs
- ::=  mgst Typeⁿ                    ('@' '[' Type,* ']')
-  |   mgsm Termⁿ                    (    '[' Term,* ']')
-  |   mgsv Term                     (Term)
+ ::=  mgst n Typeⁿ                  ('@' '[' Type,* ']')
+  |   mgsm n Termⁿ                  (    '[' Term,* ']')
+  |   mgsv   Term                   (Term)
 
 TermBind
- ::=  mbnd Varⁿ Term                ('[' Var;* ']' '=' Term)
+ ::=  mbnd n Varⁿ Term              ('[' Var;* ']' '=' Term)
 
 TermMapBind
- ::=  mpbd Term Term                (Term ':=' Term)
+ ::=  mpbd   Term Term              (Term ':=' Term)
 ```
 
 ### Term Sugar
@@ -199,4 +208,91 @@ The term/type application sytnax `Term @Type` desugars to `Term @[Type]`, becaus
 Let expression syntax that binds a single value is equivalent to binding a vector containing a single value. Do-expression syntax is desugared to let-expression syntax, where the do-block must end with a statement rather than a binding.
 
 The record term `[ L1 = M1, ... Ln = Mn ]` must have at least one field to disambiguate the syntax from the empty term vector `[]`.
+
+
+## Procs (Procedures)
+
+Procs provide the statement/expression model of computation, with graph-like control flow and mutable storage cells.
+
+```
+Proc
+ ::=  plch   Types of Proc                      ('launch' Types 'of' Term)
+  |   pret   Term                               ('return' Term)
+
+  |   pcel   Name Type Term Proc                ('cell'   Bind ':' Type '←' Term ';' Term)
+  |   pupd   Name Term Proc                     ('update' Bound '←' Term ';' Term)
+
+  |   pwhs n (Term Proc)ⁿ Proc                  ('whens'  '{' ProcWhensAlt;+ '}' ';' Term)
+
+  |   pmch   Term ProcAlt+ Proc                 ('match'  Term '{' ProcMatchAlt;+ '}' ';' Term)
+
+  |   pllp   Proc Proc                          ('loop'   Term ';' Term)
+  |   pbrk                                      ('break')
+  |   pcnt                                      ('continue')
+
+  |   pwll   Term Proc ';' Proc                 ('while'  Term 'do' Term ';' Term)
+
+  |   pent   Term ProcBind                      ('enter'  Term 'with' '{' ProcBind+ '}' ';' Term)
+  |   plve                                      ('leave')
+
+ProcWhensAlt ::= Term Proc                      (Term '→' Term)
+ProcMatchAlt ::= Lbl (Var Type)* Proc           (Lbl '[' (Var ':' Type)* ']' → Term)
+ProcBind     ::= Name TermParams+ Type Proc     (Name TermParams+ ':' Type '=' Term)
+```
+
+### Proc Sugar
+
+#### Substitutions
+The following substitutions are always valid:
+```
+end                    ≡ []
+seq  Term ; Term       ≡ let [] = Term ; Term
+when Term Proc ; Term  ≡ whens { Term → Proc } ; Term
+```
+
+#### Do syntax
+Do syntax provides a convenient way to write compound procedures in a statement based style. Consider the following example, using the grammar specified above:
+```
+proc square []: []! #Console
+ = cell x: #Nat ← 9
+ ; while (#nat'gt [x, 0])
+          ( cell y: #Nat ← 9
+          ; while (#nat'gt [y, 0])
+                  ( seq #console'print "*"
+                  ; update y ← #nat'sub [y, 1]
+                  ; end)
+          ; seq #console'print "\n"
+          ; update x ← #nat'sub [x, 1]
+          ; end)
+ ; #console'println "done"
+```
+
+Sequences of procedures connected by ';' can instead be written using the 'do' keyword to start the sequence, and omitting the 'seq', 'call' and 'end' keywords.
+```
+proc square []: []! #Console
+ = do   { cell x: #Nat ← 9
+        ; while (#nat'gt [x, 0])
+          do    { cell y: #Nat ← 9
+                ; while (#nat'gt [y, 0])
+                  do    { #console'print "*"
+                        ; y ← #nat'sub [y, 1] }
+                ; #console'print "\n"
+                ; x ← #nat'sub [x, 1] }
+        ; #console'println "done" }
+```
+
+The '{', '}' and ';' symbols can then be elided, relying on the indentation to specify how the procedure components should be nested. This is the preferred layout for hand written code.
+
+```
+proc square []: []! #Console
+ = do   cell x: #Nat ← 9
+        while (#nat'gt [x, 0]) do
+                cell y: #Nat ← 9
+                while (#nat'gt [y, 0]) do
+                        #console'print "*"
+                        y  ← #nat'sub [y, 1]
+                #console'print "\n"
+                x ← #nat'sub [x, 1]
+        #console'println "done"
+```
 

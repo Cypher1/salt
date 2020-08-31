@@ -1,0 +1,57 @@
+
+-- Test offside rule handling in the parser framework.
+
+proc do'explicit []: [] ! #Console
+ = do   { #console'print "hello"
+        ; return [] }
+
+
+proc do'same []: [] ! #Console
+ = do   #console'print "hello"
+        []
+
+
+proc do'next []: [] ! #Console
+ = do
+        #console'print "hello"
+        []
+
+
+proc do'head []: [] ! #Console  = do
+        #console'print "hello"
+        []
+
+
+proc do'nest []: []! #Console
+ = do   #console'print "good morning"
+        do      #console'print "hello"
+                #console'print "world"
+
+
+proc do'nest'head []: []! #Console = do
+        #console'print "good morning"
+        do #console'print "hello"
+           #console'print "world"
+
+
+proc when3ss [n: #Nat, m: #Nat]: #Text
+ = do   when (#nat'eq [n, 1]) do
+                when (#nat'eq [n, 2]) do
+                        return "derp"
+        "whatever"
+
+
+proc when4sss [n: #Nat, m: #Nat]: #Text
+ = do   when (#nat'eq [n, 1]) do
+                when (#nat'eq [m, 1]) do
+                        return "one, one"
+                when (#nat'eq [m, 2]) do
+                        return "one, two"
+        "whatever"
+
+
+proc match1 [v: <foo: #Nat, bar: #Nat>]: #Nat
+  = do  match v with
+          foo [x: #Nat] → return x
+          bar [x: #Nat] → return x
+        [5]

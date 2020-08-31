@@ -1,0 +1,7 @@
+
+proc add [x:#Nat, y: #Nat]: #Nat
+ = #nat'add [x, y]
+
+test eval add 2 3
+
+

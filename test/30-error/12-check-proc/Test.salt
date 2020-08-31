@@ -1,0 +1,60 @@
+
+
+-- launch / return  -----------------------------------------------------------
+test type launch #Nat of return 5
+
+-- Error: value produced by 'return' does not match type of launch.
+test type launch #Nat of return #true
+
+
+-- cell / update  -------------------------------------------------------------
+test type cell a: #Nat ← 5; a ← 6; a
+
+-- Error: type of cell does not match the type it is being updated at.
+test type cell a: #Nat ← 5; a ← #true; a
+
+
+-- when -----------------------------------------------------------------------
+test type launch [] of
+ when #true return []
+
+-- Error: scrutinee is not a boolean.
+test type launch [] of
+ when 5 return []
+
+-- Error: body yields a value.
+test type
+ when #true do 5
+
+
+-- match ----------------------------------------------------------------------
+test type launch [] of
+ match the <foo: #Nat> of `foo [5] with
+  { foo [x: #Nat] → return []}
+
+-- Error: scrutinee type does not match alt type.
+test type launch [] of
+ match the <bar: #Nat> of `bar [5] with
+  { foo [x: #Nat] → return []}
+
+-- Error: body yields a value
+test type
+ match the <foo: #Nat> of `foo [5] with
+  { foo [x: #Nat] → [x]}
+
+
+-- loop -----------------------------------------------------------------------
+test type loop #console'print "meep"
+
+-- Error: body yields a value.
+test type loop [5]
+
+test type loop break
+
+-- Error: break appears outside the scope of a loop
+test type break
+
+test type loop continue
+
+-- Error: continue appears outside the scope of a loop
+test type continue

@@ -6,96 +6,134 @@ import Control.Exception
 import Data.Typeable
 
 
+-- Error messages that the type checker can throw.
 data Error a
         -- Malformed AST ------------------------
-        = ErrorKindMalformed
-        { errorAnnot            :: a
+        = ErrorTypeMalformed
+        { errorUniverse         :: Universe
+        , errorAnnot            :: a
         , errorWhere            :: [Where a]
         , errorKind             :: Kind a }
-
-        | ErrorTypeMalformed
-        { errorAnnot            :: a
-        , errorWhere            :: [Where a]
-        , errorType             :: Type a }
 
         | ErrorTermMalformed
         { errorAnnot            :: a
         , errorWhere            :: [Where a]
         , errorTerm             :: Term a }
 
-        -- Structural arity ---------------------
-        | ErrorTermsWrongArity
+        | ErrorTermNotFragment
         { errorAnnot            :: a
+        , errorWhere            :: [Where a]
+        , errorFragment         :: Fragment
+        , errorWhat             :: Text }
+
+        -- Module level problems ----------------
+        | ErrorTypeDeclRebound
+        { errorAnnot            :: a
+        , errorWhere            :: [Where a]
+        , errorName             :: Name }
+
+        | ErrorTermDeclRebound
+        { errorAnnot            :: a
+        , errorWhere            :: [Where a]
+        , errorName             :: Name }
+
+        | ErrorTermDeclImpure
+        { errorAnnot            :: a
+        , errorWhere            :: [Where a]
+        , errorName             :: Name
+        , errorEffect           :: Type a }
+
+        | ErrorTermDeclEmpty
+        { errorAnnot            :: a
+        , errorWhere            :: [Where a]
+        , errorName             :: Name }
+
+        | ErrorTermDeclProcNoParams
+        { errorAnnot            :: a
+        , errorWhere            :: [Where a]
+        , errorName             :: Name }
+
+        | ErrorTestDeclRebound
+        { errorAnnot            :: a
+        , errorWhere            :: [Where a]
+        , errorName             :: Name }
+
+        | ErrorTestDeclImpure
+        { errorAnnot            :: a
+        , errorWhere            :: [Where a]
+        , errorNameMaybe        :: Maybe Name
+        , errorEffect           :: Type a }
+
+        | ErrorTypeDeclsRecursive
+        { errorAnnot            :: a
+        , errorWhere            :: [Where a]
+        , errorName             :: Name
+        , errorLoop             :: [(Name, a)] }
+
+        -- Structural arity ---------------------
+        | ErrorWrongArity
+        { errorUniverse         :: Universe
+        , errorAnnot            :: a
         , errorWhere            :: [Where a]
         , errorTypesActual      :: [Type a]
-        , errorKindsExpected    :: [Type a] }
+        , errorTypesExpected    :: [Type a] }
 
-        | ErrorTypesWrongArity
-        { errorAnnot            :: a
+        | ErrorWrongArityUp
+        { errorUniverse         :: Universe
+        , errorAnnot            :: a
         , errorWhere            :: [Where a]
-        , errorTypes            :: [Type a]
-        , errorKinds            :: [Kind a] }
+        , errorTypesActual      :: [Type a]
+        , errorKindsExpected    :: [Kind a] }
 
         -- Unknown vars and refs ----------------
-        | ErrorUnknownPrimitive
-        { errorAnnot            :: a
+        | ErrorUnknownPrim
+        { errorUniverse         :: Universe
+        , errorAnnot            :: a
         , errorWhere            :: [Where a]
         , errorName             :: Name }
 
-        | ErrorUnknownDataCtor
-        { errorAnnot            :: a
+        | ErrorUnknownCtor
+        { errorUniverse         :: Universe
+        , errorAnnot            :: a
         , errorWhere            :: [Where a]
         , errorName             :: Name }
 
-        | ErrorUnknownTypeCtor
-        { errorAnnot            :: a
-        , errorWhere            :: [Where a]
-        , errorName             :: Name }
-
-        | ErrorUnknownTypePrim
-        { errorAnnot            :: a
-        , errorWhere            :: [Where a]
-        , errorName             :: Name }
-
-        | ErrorUnknownKindCtor
-        { errorAnnot            :: a
-        , errorWhere            :: [Where a]
-        , errorName             :: Name }
-
-        | ErrorUnknownTypeBound
-        { errorAnnot            :: a
+        | ErrorUnknownBound
+        { errorUniverse         :: Universe
+        , errorAnnot            :: a
         , errorWhere            :: [Where a]
         , errorVar              :: Bound }
-
-        | ErrorUnknownTermBound
-        { errorAnnot            :: a
-        , errorWhere            :: [Where a]
-        , errorVar              :: Bound }
-
-        -- Let bindings --------------------------
-        | ErrorLetWrongArity
-        { errorAnnot            :: a
-        , errorWhere            :: [Where a]
-        , errorTypesActual      :: [Type a]
-        , errorBinds            :: [Bind] }
-
-        -- Purity problems -----------------------
-        | ErrorImpureTypeAbstraction
-        { errorAnnot            :: a
-        , errorWhere            :: [Where a]
-        , errorEffect           :: Type a }
-
-        | ErrorImpureTermAbstraction
-        { errorAnnot            :: a
-        , errorWhere            :: [Where a]
-        , errorEffect           :: Type a }
 
         -- Unexpected types ----------------------
-        | ErrorTypeMismatch
-        { errorAnnot            :: a
+        | ErrorMismatch
+        { errorUniverse         :: Universe
+        , errorAnnot            :: a
         , errorWhere            :: [Where a]
         , errorTypeExpected     :: Type a
         , errorTypeActual       :: Type a }
+
+        -- Abstraction problems ------------------
+        | ErrorAbsConflict
+        { errorUniverse         :: Universe
+        , errorAnnot            :: a
+        , errorWhere            :: [Where a]
+        , errorNames            :: [Name] }
+
+        | ErrorAbsImpure
+        { errorUniverse         :: Universe
+        , errorAnnot            :: a
+        , errorWhere            :: [Where a]
+        , errorEffect           :: Type a }
+
+        | ErrorAbsEmpty
+        { errorUniverse         :: Universe
+        , errorAnnot            :: a
+        , errorWhere            :: [Where a] }
+
+        | ErrorAbsTermNoValueForForall
+        { errorAnnot            :: a
+        , errorWhere            :: [Where a]
+        , errorParams           :: [TermParams a] }
 
         -- Application problems ------------------
         | ErrorUnsaturatedPrim
@@ -114,6 +152,16 @@ data Error a
         { errorAnnot            :: a
         , errorWhere            :: [Where a]
         , errorType             :: Type a }
+
+        | ErrorAppNotFunction
+        { errorAnnot            :: a
+        , errorWhere            :: [Where a]
+        , errorType             :: Type a }
+
+        | ErrorAppVector
+        { errorAnnot            :: a
+        , errorWhere            :: [Where a]
+        , errorTypes            :: [Type a] }
 
         -- type/type
         | ErrorAppTypeTypeCannot
@@ -162,6 +210,24 @@ data Error a
         , errorWhere            :: [Where a]
         , errorCtorParamTypes   :: [Type a]
         , errorCtorArgNum       :: Int }
+
+        -- Let bindings --------------------------
+        | ErrorLetWrongArity
+        { errorAnnot            :: a
+        , errorWhere            :: [Where a]
+        , errorTypesActual      :: [Type a]
+        , errorBinds            :: [Bind] }
+
+        -- Rec bindings -------------------------
+        | ErrorRecConflict
+        { errorAnnot            :: a
+        , errorWhere            :: [Where a]
+        , errorNames            :: [Name] }
+
+        | ErrorRecValueRecursion
+        { errorAnnot            :: a
+        , errorWhere            :: [Where a]
+        , errorBind             :: Bind  }
 
         -- Record problems ----------------------
         | ErrorRecordProjectIsNot
@@ -221,6 +287,19 @@ data Error a
         , errorTypeField        :: Type a
         , errorTypeScrut        :: Type a }
 
+        | ErrorCaseAltPatWrongArity
+        { errorAnnot            :: a
+        , errorWhere            :: [Where a]
+        , errorLabel            :: Name
+        , errorTypesPat         :: [Type a]
+        , errorTypesField       :: [Type a] }
+
+        | ErrorCaseAltPatBindConflict
+        { errorAnnot            :: a
+        , errorWhere            :: [Where a]
+        , errorLabel            :: Name
+        , errorNames            :: [Name] }
+
         | ErrorCaseAltsOverlapping
         { errorAnnot            :: a
         , errorWhere            :: [Where a]
@@ -237,6 +316,48 @@ data Error a
         { errorAnnot            :: a
         , errorWhere            :: [Where a]
         , errorTypes            :: [Type a] }
+
+        -- Procedure problems -------------------
+        | ErrorProcReturnNoLaunch
+        { errorAnnot            :: a
+        , errorWhere            :: [Where a] }
+
+        | ErrorProcBreakNoLoop
+        { errorAnnot            :: a
+        , errorWhere            :: [Where a] }
+
+        | ErrorProcContinueNoLoop
+        { errorAnnot            :: a
+        , errorWhere            :: [Where a] }
+
+        | ErrorProcUpdateNotCell
+        { errorAnnot            :: a
+        , errorWhere            :: [Where a]
+        , errorType             :: Type a }
+
+        -- Existential problems -------------------
+        | ErrorUnpackNotAppliedToPack
+        { errorAnnot            :: a
+        , errorWhere            :: [Where a]
+        , errorTerm             :: Term a }
+
+        | ErrorPackTypeParamMismatch
+        { errorAnnot            :: a
+        , errorWhere            :: [Where a]
+        , errorTypes            :: [Type a]
+        , errorType             :: Type a }
+
+        | ErrorUnpackTypeParamMismatch
+        { errorAnnot            :: a
+        , errorWhere            :: [Where a]
+        , errorBinds            :: [Bind]
+        , errorType             :: Type a }
+
+        | ErrorPackTypeNotExistential
+        { errorAnnot            :: a
+        , errorWhere            :: [Where a]
+        , errorType             :: Type a }
+
         deriving Show
 
 instance (Show a, Typeable a) => Exception (Error a)

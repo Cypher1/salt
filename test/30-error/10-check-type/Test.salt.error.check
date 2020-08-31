@@ -1,0 +1,185 @@
+test/30-error/10-check-type/Test.salt:5:11
+  Unknown type primitive '#derp'
+
+  5:11   In test
+
+test/30-error/10-check-type/Test.salt:10:11
+  Unknown type name 'a'
+
+  10:11  In test
+
+test/30-error/10-check-type/Test.salt:15:17
+  Unknown kind primitive '#Derp'
+
+  15:11  In test
+
+test/30-error/10-check-type/Test.salt:18:13
+  Conflicting type binders for 'a'
+
+  18:11  In test
+
+test/30-error/10-check-type/Test.salt:21:34
+  Actual kind '#Effect'
+   does not match
+   expected kind '#Data'
+
+  21:11  In test
+
+test/30-error/10-check-type/Test.salt:26:17
+  Unknown kind primitive '#Derp'
+
+  26:11  In test
+
+test/30-error/10-check-type/Test.salt:29:29
+  Unknown type primitive '#Derp'
+
+  29:11  In test
+
+test/30-error/10-check-type/Test.salt:32:31
+  Actual kind '#Data'
+   does not match
+   expected kind '#Effect'
+
+  32:11  In test
+
+test/30-error/10-check-type/Test.salt:35:49
+  Not enough arguments in type application.
+   Expected arguments of kinds [#Data, #Data]
+
+  35:11  In test
+
+test/30-error/10-check-type/Test.salt:38:29
+  Not enough arguments in type application.
+   Expected argument of kind '#Data'
+
+  38:11  In test
+
+test/30-error/10-check-type/Test.salt:41:49
+  Too many arguments in type application.
+   Expected arguments of kinds [#Data, #Data]
+
+  41:11  In test
+
+test/30-error/10-check-type/Test.salt:44:41
+  Too many arguments in type application.
+   Expected arguments of kinds [#Data, #Data]
+
+  44:11  In test
+
+test/30-error/10-check-type/Test.salt:49:17
+  Unknown kind primitive '#Derp'
+
+  49:11  In test
+
+test/30-error/10-check-type/Test.salt:52:13
+  Conflicting type binders for 'a'
+
+  52:11  In test
+
+test/30-error/10-check-type/Test.salt:55:27
+  Actual kind '#Effect'
+   does not match
+   expected kind '#Data'
+
+  55:11  In test
+
+test/30-error/10-check-type/Test.salt:60:17
+  Unknown kind primitive '#Derp'
+
+  60:11  In test
+
+test/30-error/10-check-type/Test.salt:63:13
+  Conflicting type binders for 'a'
+
+  63:11  In test
+
+test/30-error/10-check-type/Test.salt:66:27
+  Actual kind '#Effect'
+   does not match
+   expected kind '#Data'
+
+  66:11  In test
+
+test/30-error/10-check-type/Test.salt:71:12
+  Unknown type primitive '#Derp'
+
+  71:11  In test
+
+test/30-error/10-check-type/Test.salt:74:12
+  Actual kind '#Effect'
+   does not match
+   expected kind '#Data'
+
+  74:11  In test
+
+test/30-error/10-check-type/Test.salt:77:18
+  Unknown type primitive '#Derp'
+
+  77:11  In test
+
+test/30-error/10-check-type/Test.salt:80:18
+  Actual kind '#Effect'
+   does not match
+   expected kind '#Repr'
+
+  80:11  In test
+
+test/30-error/10-check-type/Test.salt:85:15
+  Actual kind '#Effect'
+   does not match
+   expected kind '#Data'
+
+  85:11  In test
+
+test/30-error/10-check-type/Test.salt:88:22
+  Actual kind '#Effect'
+   does not match
+   expected kind '#Data'
+
+  88:11  In test
+
+test/30-error/10-check-type/Test.salt:91:11
+  Duplicate fields 'x' in record type.
+
+  91:11  In test
+
+test/30-error/10-check-type/Test.salt:96:15
+  Actual kind '#Effect'
+   does not match
+   expected kind '#Data'
+
+  96:11  In test
+
+test/30-error/10-check-type/Test.salt:99:22
+  Actual kind '#Effect'
+   does not match
+   expected kind '#Data'
+
+  99:11  In test
+
+test/30-error/10-check-type/Test.salt:102:11
+  Duplicate alternatives 'x' in variant type.
+
+  102:11 In test
+
+test/30-error/10-check-type/Test.salt:107:11
+  Actual kind '#Effect'
+   does not match
+   expected kind '#Data'
+
+  107:11 In test
+
+test/30-error/10-check-type/Test.salt:110:16
+  Actual kind '#Data'
+   does not match
+   expected kind '#Effect'
+
+  110:11 In test
+
+test/30-error/10-check-type/Test.salt:115:22
+  Actual kind '#Data'
+   does not match
+   expected kind '#Effect'
+
+  115:11 In test
+
